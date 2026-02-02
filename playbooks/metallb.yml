@@ -1,0 +1,94 @@
+---
+- name: Deploy MetalLB
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    metallb_namespace: metallb-system
+    metallb_chart_version: "0.14.9"
+    metallb_ip_range: "192.168.44.200-192.168.44.220"
+    kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+    kubeconfig_context: "k3s-ansible"
+
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  tasks:
+    - name: Add MetalLB Helm repository
+      ansible.builtin.shell: |
+        helm repo add metallb https://metallb.github.io/metallb || true
+        helm repo update metallb
+      changed_when: true
+
+    - name: Check if MetalLB is already installed
+      ansible.builtin.shell: |
+        helm status metallb -n {{ metallb_namespace }} --kube-context {{ kubeconfig_context }} 2>/dev/null
+      register: metallb_status
+      failed_when: false
+      changed_when: false
+
+    - name: Deploy MetalLB chart
+      ansible.builtin.shell: |
+        helm upgrade --install metallb metallb/metallb \
+          --namespace {{ metallb_namespace }} \
+          --create-namespace \
+          --version {{ metallb_chart_version }} \
+          --kube-context {{ kubeconfig_context }} \
+          --wait
+      when: metallb_status.rc != 0
+      register: helm_install
+
+    - name: Wait for MetalLB controller to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: metallb-controller
+        namespace: "{{ metallb_namespace }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+        context: "{{ kubeconfig_context }}"
+        wait: true
+        wait_timeout: 120
+
+    - name: Create IPAddressPool
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ kubeconfig_path }}"
+        context: "{{ kubeconfig_context }}"
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: default-pool
+            namespace: "{{ metallb_namespace }}"
+          spec:
+            addresses:
+              - "{{ metallb_ip_range }}"
+
+    - name: Create L2Advertisement
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ kubeconfig_path }}"
+        context: "{{ kubeconfig_context }}"
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: default-l2
+            namespace: "{{ metallb_namespace }}"
+          spec:
+            ipAddressPools:
+              - default-pool
+
+    - name: Verify MetalLB is ready
+      kubernetes.core.k8s_info:
+        api_version: metallb.io/v1beta1
+        kind: IPAddressPool
+        name: default-pool
+        namespace: "{{ metallb_namespace }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+        context: "{{ kubeconfig_context }}"
+      register: pool_check
+      failed_when: pool_check.resources | length == 0
+
+    - name: Display MetalLB status
+      ansible.builtin.debug:
+        msg: "MetalLB deployed with IP pool {{ metallb_ip_range }}"
