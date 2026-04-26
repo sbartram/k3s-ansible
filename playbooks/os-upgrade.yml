@@ -3,7 +3,7 @@
 # Server is patched first without drain (single control-plane).
 # Agents are patched one at a time with cordon/drain/uncordon.
 
-- name: OS upgrade — control plane
+- name: OS upgrade - control plane
   hosts: server
   become: true
   gather_facts: true
@@ -13,7 +13,7 @@
       vars:
         os_upgrade_drain: false
 
-- name: OS upgrade — agents
+- name: OS upgrade - agents
   hosts: agent
   become: true
   gather_facts: true
