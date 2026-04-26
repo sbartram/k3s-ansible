@@ -5,6 +5,14 @@
       - ansible_os_family == "Debian"
     fail_msg: "os_upgrade currently only supports Debian/Ubuntu (ansible_os_family=Debian); got {{ ansible_os_family }}"
 
+- name: Assert a control-plane host is available for kubectl delegation
+  when: os_upgrade_drain
+  ansible.builtin.assert:
+    that:
+      - groups['server'] is defined
+      - groups['server'] | length > 0
+    fail_msg: "os_upgrade_drain=true requires at least one host in the 'server' group for kubectl delegation."
+
 - name: Run Debian-family upgrade tasks
   ansible.builtin.include_tasks: debian.yml
 
