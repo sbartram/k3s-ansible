@@ -69,7 +69,7 @@ The CI runs tests against `tests/basic.yml` (single server + agent) and `tests/h
 | `k3s_server` | Control plane: downloads K3s, initializes first server with `--cluster-init` for HA, joins additional servers |
 | `k3s_agent` | Worker nodes: downloads K3s, joins agents to cluster |
 | `k3s_upgrade` | Handles version upgrades with service file regeneration |
-| `os_upgrade` | OS package patching: `apt update`/`apt upgrade`, optional autoremove, optional cordon/drain, reboot when `/var/run/reboot-required` is set |
+| `os_upgrade` | OS package patching: apt update/upgrade, optional autoremove and cordon/drain on agents, reboot when `/var/run/reboot-required` is set |
 | `airgap` | Distributes K3s binary, install script, and images for offline installations |
 | `raspberrypi` | Pi-specific cgroup and device tree fixes |
 
