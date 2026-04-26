@@ -7,3 +7,57 @@
 
 - name: Run Debian-family upgrade tasks
   ansible.builtin.include_tasks: debian.yml
+
+- name: Check whether a reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: os_upgrade_reboot_required
+
+- name: Decide whether to reboot
+  ansible.builtin.set_fact:
+    os_upgrade_should_reboot: "{{ os_upgrade_reboot_required.stat.exists or os_upgrade_force_reboot }}"
+
+- name: Report no reboot needed
+  when: not os_upgrade_should_reboot
+  ansible.builtin.debug:
+    msg: "No reboot required for {{ inventory_hostname }}; /var/run/reboot-required is absent."
+
+- name: Drain and reboot block
+  when: os_upgrade_should_reboot
+  block:
+    - name: Cordon node before reboot
+      when: os_upgrade_drain
+      ansible.builtin.command: >-
+        kubectl cordon {{ inventory_hostname }}
+      delegate_to: "{{ groups['server'][0] }}"
+      changed_when: true
+
+    - name: Drain node before reboot
+      when: os_upgrade_drain
+      ansible.builtin.command: >-
+        kubectl drain {{ inventory_hostname }}
+        --ignore-daemonsets
+        --delete-emptydir-data
+        --timeout={{ os_upgrade_drain_timeout }}s
+      delegate_to: "{{ groups['server'][0] }}"
+      changed_when: true
+
+    - name: Reboot node
+      ansible.builtin.reboot:
+        reboot_timeout: "{{ os_upgrade_reboot_timeout }}"
+        test_command: uptime
+
+    - name: Wait for node to report Ready after reboot
+      when: os_upgrade_drain
+      ansible.builtin.command: >-
+        kubectl wait --for=condition=Ready node/{{ inventory_hostname }}
+        --timeout={{ os_upgrade_node_ready_timeout }}s
+      delegate_to: "{{ groups['server'][0] }}"
+      changed_when: false
+
+    - name: Uncordon node after reboot
+      when: os_upgrade_drain
+      ansible.builtin.command: >-
+        kubectl uncordon {{ inventory_hostname }}
+      delegate_to: "{{ groups['server'][0] }}"
+      changed_when: true
