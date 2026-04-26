@@ -26,6 +26,12 @@ ansible-playbook playbooks/site.yml -i inventory.yml
 # Upgrade K3s version (update k3s_version in inventory first)
 ansible-playbook playbooks/upgrade.yml -i inventory.yml
 
+# Apply OS package updates with reboot-if-required (drain/cordon for agents)
+ansible-playbook playbooks/os-upgrade.yml -i inventory.yml
+
+# Apply OS patches and then upgrade k3s in a single run
+ansible-playbook playbooks/upgrade-all.yml -i inventory.yml
+
 # Remove K3s from all nodes
 ansible-playbook playbooks/reset.yml -i inventory.yml
 
@@ -63,6 +69,7 @@ The CI runs tests against `tests/basic.yml` (single server + agent) and `tests/h
 | `k3s_server` | Control plane: downloads K3s, initializes first server with `--cluster-init` for HA, joins additional servers |
 | `k3s_agent` | Worker nodes: downloads K3s, joins agents to cluster |
 | `k3s_upgrade` | Handles version upgrades with service file regeneration |
+| `os_upgrade` | OS package patching: `apt update`/`apt upgrade`, optional autoremove, optional cordon/drain, reboot when `/var/run/reboot-required` is set |
 | `airgap` | Distributes K3s binary, install script, and images for offline installations |
 | `raspberrypi` | Pi-specific cgroup and device tree fixes |
 
