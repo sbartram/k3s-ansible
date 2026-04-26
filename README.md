@@ -161,6 +161,29 @@ ansible-playbook k3s.orchestration.upgrade -i inventory.yml
 ansible-playbook playbooks/upgrade.yml -i inventory.yml
 ```
 
+### OS package upgrades
+
+A separate playbook applies Ubuntu/Debian package updates and reboots nodes when required. Server is patched first without drain (single control-plane cluster); agents are patched one at a time with `kubectl drain`/`uncordon`.
+
+```bash
+ansible-playbook playbooks/os-upgrade.yml -i inventory.yml
+```
+
+To do an OS patch and a k3s version bump in one maintenance window (update `k3s_version` in inventory first):
+
+```bash
+ansible-playbook playbooks/upgrade-all.yml -i inventory.yml
+```
+
+To force a reboot even if `/var/run/reboot-required` is absent:
+
+```bash
+ansible-playbook playbooks/os-upgrade.yml -i inventory.yml \
+  -e os_upgrade_force_reboot=true
+```
+
+The `os_upgrade` role only supports Debian/Ubuntu — it asserts `ansible_os_family == "Debian"` and fails on other distributions.
+
 ## Airgap Install
 
 Airgap installation is supported via the `airgap_dir` variable. This variable should be set to the path of a directory containing the K3s binary and images. The release artifacts can be downloaded from the [K3s Releases](https://github.com/k3s-io/k3s/releases). You must download the appropriate images for you architecture (any of the compression formats will work). Additionally, you must run the `airgap` role to set up the airgapped environment.
