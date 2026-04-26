@@ -1,5 +1,14 @@
 ---
-# Filled in by Task 2.
-- name: Placeholder
-  ansible.builtin.debug:
-    msg: "debian.yml not yet implemented"
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: "{{ os_upgrade_apt_upgrade_type }}"
+
+- name: Autoremove unused packages
+  when: os_upgrade_autoremove
+  ansible.builtin.apt:
+    autoremove: true
