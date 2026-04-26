@@ -1,0 +1,9 @@
+---
+- name: Assert supported OS family
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "Debian"
+    fail_msg: "os_upgrade currently only supports Debian/Ubuntu (ansible_os_family=Debian); got {{ ansible_os_family }}"
+
+- name: Run Debian-family upgrade tasks
+  ansible.builtin.include_tasks: debian.yml

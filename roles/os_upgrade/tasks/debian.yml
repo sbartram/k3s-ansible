@@ -1,0 +1,5 @@
+---
+# Filled in by Task 2.
+- name: Placeholder
+  ansible.builtin.debug:
+    msg: "debian.yml not yet implemented"

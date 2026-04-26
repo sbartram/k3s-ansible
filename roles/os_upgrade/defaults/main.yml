@@ -1,0 +1,23 @@
+---
+# Whether to cordon and drain this node before reboot.
+# Set true for agent plays; leave false for the control plane (single-server cluster).
+os_upgrade_drain: false
+
+# Maps to ansible.builtin.apt: upgrade=. "safe" == apt upgrade (no removals).
+# Use "full" or "dist" only after confirming pending package removals.
+os_upgrade_apt_upgrade_type: safe
+
+# Run apt autoremove after the upgrade.
+os_upgrade_autoremove: true
+
+# Seconds to wait for SSH after reboot.
+os_upgrade_reboot_timeout: 600
+
+# Seconds for kubectl drain to complete before failing.
+os_upgrade_drain_timeout: 300
+
+# Seconds to wait for the node to report Ready after reboot.
+os_upgrade_node_ready_timeout: 300
+
+# Reboot even when /var/run/reboot-required is absent. Escape hatch.
+os_upgrade_force_reboot: false
