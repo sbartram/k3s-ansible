@@ -25,3 +25,9 @@ os_upgrade_force_reboot: false
 # Seconds to wait for the apt lock if another process (e.g., unattended-upgrades)
 # is currently holding it. apt module default is 0 (fail immediately).
 os_upgrade_apt_lock_timeout: 300
+
+# Name kubectl uses for this node (e.g., for cordon/drain). k3s typically
+# registers nodes by their bare hostname, while Ansible inventories often use
+# IPs. Default to ansible_hostname (gathered fact, the bare hostname); override
+# per-host or via -e if your cluster registers nodes by something else.
+os_upgrade_node_name: "{{ ansible_hostname }}"

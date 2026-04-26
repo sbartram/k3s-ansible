@@ -4,11 +4,15 @@ k3s_cluster:
     server:
       hosts:
         192.168.44.71:
+          os_upgrade_node_name: control-plane.local
     agent:
       hosts:
         192.168.44.72:
+          os_upgrade_node_name: worker2.local
         192.168.44.73:
+          os_upgrade_node_name: tp-3
         192.168.44.74:
+          os_upgrade_node_name: worker4.local
 
   # Required Vars
   vars:
