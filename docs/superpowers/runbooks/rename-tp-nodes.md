@@ -19,12 +19,12 @@ On each host, `hostname` and `hostname -f` both return `tp-N` with no `.local` s
 
 ## Per-node substitutions
 
-| Phase | IP             | `<old>`               | `<new>` | Notes |
-|-------|----------------|-----------------------|---------|-------|
-| 1     | 192.168.44.73  | `tp-3`                | `tp-3`  | Dry-run; rename steps skipped (already correct). Real drain still runs. |
-| 2     | 192.168.44.72  | `worker2.local`       | `tp-2`  | First real rename. |
-| 3     | 192.168.44.74  | `worker4.local`       | `tp-4`  | Second real rename. |
-| 4     | 192.168.44.71  | `control-plane.local` | `tp-1`  | Control plane. API outage ~1–3 min. Mandatory backup. |
+| Phase | IP             | `<old>`               | `<new>` | Procedure section | Notes |
+|-------|----------------|-----------------------|---------|-------------------|-------|
+| 1     | 192.168.44.73  | `tp-3`                | `tp-3`  | [tp-3 dry-run](#procedure-tp-3-dry-run-phase-1) | Dry-run; rename steps skipped (already correct). Real drain still runs. |
+| 2     | 192.168.44.72  | `worker2.local`       | `tp-2`  | [rename an agent node](#procedure-rename-an-agent-node) | First real rename. |
+| 3     | 192.168.44.74  | `worker4.local`       | `tp-4`  | [rename an agent node](#procedure-rename-an-agent-node) | Second real rename. |
+| 4     | 192.168.44.71  | `control-plane.local` | `tp-1`  | [rename the control plane](#procedure-rename-the-control-plane-tp-1-phase-4) | API outage ~1–3 min. Mandatory backup. |
 
 **Order is mandatory.** Do not skip ahead. Verify each phase's gate before starting the next.
 
@@ -142,6 +142,8 @@ kubectl get pods -A -o wide --field-selector spec.nodeName=tp-3
 
 **Gate:** `tp-3` Ready, uncordoned, scheduling new pods. If anything is wrong here, **stop the entire rollout** — your drain mechanics or cluster health is off, and you don't want to find that out mid-control-plane-rename.
 
+**If this gate passes:** now run **Phases 2 and 3** using the [agent procedure](#procedure-rename-an-agent-node) above. Phase 2 = `tp-2` (`worker2.local` → `tp-2`); Phase 3 = `tp-4` (`worker4.local` → `tp-4`). Complete both phases — including their A7 verification gates — before proceeding to Phase 4 (control-plane rename) below.
+
 ## Procedure: rename the control plane (`tp-1`, Phase 4)
 
 Run only after `tp-3`, `tp-2`, and `tp-4` are all verified Ready under their target names. The Kubernetes API is unavailable for ~1–3 minutes during this procedure — workloads on agents keep running (kubelet keeps pods alive without the API), but no scheduling, no `kubectl`.
@@ -163,10 +165,10 @@ The backup is mandatory — it's the rollback path of last resort.
 ```bash
 ssh ubuntu@192.168.44.71 'sudo systemctl stop k3s'
 ssh ubuntu@192.168.44.71 'sudo tar -czf /root/k3s-server-backup-$(date +%Y%m%d-%H%M%S).tar.gz -C /var/lib/rancher k3s/server'
-ssh ubuntu@192.168.44.71 'sudo ls -la /root/k3s-server-backup-*.tar.gz'
+ssh ubuntu@192.168.44.71 'sudo ls -la /root/k3s-server-backup-*.tar.gz && sudo test -s $(ls -1t /root/k3s-server-backup-*.tar.gz | head -1) && echo "backup OK"'
 ```
 
-**Gate:** the backup file exists and is non-zero (typically tens to hundreds of MB depending on cluster age).
+**Gate:** the command prints `backup OK` on its final line. (`test -s` fails on a zero-byte file, so the `&&` chain breaks and `backup OK` is never printed if the tarball is empty.) Backups are typically tens to hundreds of MB depending on cluster age.
 
 ```bash
 ssh ubuntu@192.168.44.71 'sudo hostnamectl set-hostname tp-1'
@@ -194,11 +196,12 @@ for i in $(seq 1 30); do
   echo "wait $i..."
   sleep 5
 done
+kubectl get nodes >/dev/null 2>&1 || echo "WARNING: API still unreachable after ~150s — check 'systemctl status k3s' on 192.168.44.71 before running the next command"
 kubectl get nodes
 kubectl wait --for=condition=Ready node/tp-1 --timeout=300s
 ```
 
-**Gate:** `tp-1` is Ready. There may also be a `control-plane.local` entry in NotReady state — that is expected and cleaned up in C4.
+**Gate:** `tp-1` is Ready. There may also be a `control-plane.local` entry in NotReady state — that is expected and cleaned up in C4. **If `kubectl wait` times out or returns an error, stop here and go to the [Rollback](#rollback) section — try R2 first, then R3 if R2 fails.**
 
 ### C4. Delete the stale old entry (from laptop)
 
