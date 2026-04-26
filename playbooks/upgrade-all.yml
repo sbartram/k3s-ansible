@@ -1,0 +1,9 @@
+---
+# Convenience wrapper: OS patches first, then k3s version upgrade.
+# Each phase is independently re-runnable; this just chains them.
+
+- name: OS upgrade phase
+  import_playbook: os-upgrade.yml
+
+- name: K3s version upgrade phase
+  import_playbook: upgrade.yml
