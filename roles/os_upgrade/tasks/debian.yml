@@ -3,12 +3,15 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+    lock_timeout: "{{ os_upgrade_apt_lock_timeout }}"
 
 - name: Upgrade installed packages
   ansible.builtin.apt:
     upgrade: "{{ os_upgrade_apt_upgrade_type }}"
+    lock_timeout: "{{ os_upgrade_apt_lock_timeout }}"
 
 - name: Autoremove unused packages
   when: os_upgrade_autoremove
   ansible.builtin.apt:
     autoremove: true
+    lock_timeout: "{{ os_upgrade_apt_lock_timeout }}"

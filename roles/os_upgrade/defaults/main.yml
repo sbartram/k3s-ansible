@@ -21,3 +21,7 @@ os_upgrade_node_ready_timeout: 300
 
 # Reboot even when /var/run/reboot-required is absent. Escape hatch.
 os_upgrade_force_reboot: false
+
+# Seconds to wait for the apt lock if another process (e.g., unattended-upgrades)
+# is currently holding it. apt module default is 0 (fail immediately).
+os_upgrade_apt_lock_timeout: 300
