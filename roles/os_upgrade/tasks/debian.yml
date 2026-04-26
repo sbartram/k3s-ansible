@@ -1,17 +1,19 @@
 ---
-# apt's lock_timeout only waits on the dpkg lock (during install), not on the
-# /var/lib/apt/lists/lock that apt-get update needs. Poll for the apt-daily
-# / unattended-upgrades processes themselves before doing anything.
-- name: Wait for apt and dpkg processes to finish  # noqa command-instead-of-shell
-  ansible.builtin.shell: |
-    if pgrep -x apt-get >/dev/null 2>&1; then exit 1; fi
-    if pgrep -x dpkg >/dev/null 2>&1; then exit 1; fi
-    if pgrep -x unattended-upgr >/dev/null 2>&1; then exit 1; fi
-    exit 0
-  register: os_upgrade_apt_busy
-  retries: "{{ ((os_upgrade_apt_lock_timeout | int) / 10) | int }}"
-  delay: 10
-  until: os_upgrade_apt_busy.rc == 0
+# Wait for the actual apt lock files to be free, instead of pattern-matching
+# process names. Process-name matching gets false positives from the
+# unattended-upgrade-shutdown signal-waiter daemon, which is always running
+# but never holds the apt lock. flock(1) is what apt itself uses internally,
+# so blocking on the same lock files is the canonical wait.
+- name: Wait for apt lists lock to be free
+  ansible.builtin.command: >-
+    flock --wait {{ os_upgrade_apt_lock_timeout }}
+    /var/lib/apt/lists/lock --command true
+  changed_when: false
+
+- name: Wait for dpkg frontend lock to be free
+  ansible.builtin.command: >-
+    flock --wait {{ os_upgrade_apt_lock_timeout }}
+    /var/lib/dpkg/lock-frontend --command true
   changed_when: false
 
 - name: Update apt cache
