@@ -331,3 +331,25 @@
         content: "{{ registries_config_yaml }}"
         dest: "/etc/rancher/k3s/registries.yaml"
         mode: "0644"
+
+- name: Configure LAN DNS resolvers via systemd-resolved
+  when: lan_dns_servers | length > 0
+  block:
+    - name: Ensure systemd-resolved drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Drop in LAN DNS resolver configuration
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/k3s-lan.conf
+        mode: "0644"
+        content: |
+          # Managed by k3s-ansible (prereq role). Do not edit by hand.
+          [Resolve]
+          DNS={{ lan_dns_servers | join(' ') }}
+          {% if lan_dns_routing_domains | length > 0 %}
+          Domains={{ lan_dns_routing_domains | join(' ') }}
+          {% endif %}
+      notify: Restart systemd-resolved

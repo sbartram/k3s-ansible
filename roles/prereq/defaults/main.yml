@@ -2,3 +2,12 @@
 api_port: 6443  # noqa var-naming[no-role-prefix]
 server_group: server  # noqa var-naming[no-role-prefix]
 agent_group: agent  # noqa var-naming[no-role-prefix]
+
+# Optional: extra DNS resolvers to add via systemd-resolved drop-in.
+# Useful when nodes need to resolve LAN-internal hostnames that public
+# resolvers don't see (split-horizon DNS).
+lan_dns_servers: []  # noqa var-naming[no-role-prefix]
+# Optional: routing domains for the resolvers above. Use a `~`-prefixed
+# domain (e.g. `~example.lan`) to scope the LAN resolver to that suffix
+# only, leaving other queries on the system default.
+lan_dns_routing_domains: []  # noqa var-naming[no-role-prefix]
