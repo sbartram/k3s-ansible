@@ -45,6 +45,20 @@ ansible-playbook playbooks/reboot.yml -i inventory-turingpi.yml --limit 192.168.
 ansible-playbook playbooks/site.yml -i inventory.yml --tags kubeconfig
 ```
 
+### Operational Plays (bartram homelab)
+
+Cluster nodes: `192.168.44.71` (server), `.72`–`.74` (agents); tp-3 = `192.168.44.73`.
+
+```bash
+# Graceful cluster shutdown: agents first, then the server, then verify down
+ansible all -i inventory.yml -m ping -o                                  # confirm reachable
+ansible agent -i inventory.yml -b -m shell -a "shutdown -h +0" -B 1 -P 0
+ansible server -i inventory.yml -b -m shell -a "shutdown -h +0" -B 1 -P 0
+for ip in 71 72 73 74; do ping -c 1 -W 2 192.168.44.$ip >/dev/null 2>&1 && echo "$ip UP" || echo "$ip down"; done
+```
+
+**LoadBalancer IP unreachable from outside (metallb L2, historically tp-3):** symptom is pod Running and in-cluster curl 200 while the external LB IP times out — metallb elected the IP's announcer onto a node whose speaker is crash-looping (`bind: address already in use` on port 7946, caused by an orphaned `/speaker` host process). Deleting the speaker pod does NOT clear the orphan; **reboot the node** (resolved the 2026-06-06 budget outage on tp-3). Full playbook: budget project memory `tp3-metallb-speaker-broken.md`.
+
 ### Rebooting a node when SSH is broken
 
 If a node refuses SSH (so `reboot.yml` can't reach it) but its kubelet is still healthy,
