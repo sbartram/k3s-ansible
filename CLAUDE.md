@@ -134,3 +134,7 @@ k3s_cluster:
 
 - Ansible 8.0+ (ansible-core 2.15+)
 - Collections: `community.general` (>=7.0.0), `ansible.posix` (>=1.5.0)
+
+## Homelab
+
+Shared infra facts (registry, pg, k3s nodes, LB IPs, deploy conventions): @../HOMELAB.md
