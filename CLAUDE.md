@@ -38,9 +38,25 @@ ansible-playbook playbooks/reset.yml -i inventory.yml
 # Reboot cluster nodes
 ansible-playbook playbooks/reboot.yml -i inventory.yml
 
+# Reboot a single node (hosts are IPs in inventory-turingpi.yml)
+ansible-playbook playbooks/reboot.yml -i inventory-turingpi.yml --limit 192.168.44.73
+
 # Re-fetch kubeconfig only
 ansible-playbook playbooks/site.yml -i inventory.yml --tags kubeconfig
 ```
+
+### Rebooting a node when SSH is broken
+
+If a node refuses SSH (so `reboot.yml` can't reach it) but its kubelet is still healthy,
+reboot it through Kubernetes with a privileged node-debug pod:
+
+```bash
+kubectl debug node/tp-3 --image=busybox --profile=sysadmin -- chroot /host reboot
+```
+
+The pod mounts the node's root filesystem at `/host`, so `chroot /host <cmd>` runs as root
+on the node itself. Used 2026-08-24 to clear the tp-3 metallb-speaker outage (see
+HOMELAB.md "Known flaky") while tp-3's `authorized_keys` was broken.
 
 ### Local Testing with Vagrant
 ```bash
