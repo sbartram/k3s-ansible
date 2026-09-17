@@ -12,3 +12,9 @@ lan_dns_servers: []  # noqa var-naming[no-role-prefix]
 # domain (e.g. `~example.lan`) to scope the LAN resolver to that suffix
 # only, leaving other queries on the system default.
 lan_dns_routing_domains: []  # noqa var-naming[no-role-prefix]
+
+# Optional: boot u-boot nodes (e.g. Turing RK1 Ubuntu images) with the unified
+# cgroup hierarchy by dropping `systemd.unified_cgroup_hierarchy=0` from the
+# kernel command line in /boot/firmware/ubuntuEnv.txt. Kubernetes 1.35 refuses
+# to start a kubelet on cgroup v1. Takes effect on the next reboot.
+ensure_cgroup_v2: false  # noqa var-naming[no-role-prefix]

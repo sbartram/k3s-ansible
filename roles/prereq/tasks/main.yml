@@ -347,6 +347,43 @@
         dest: "/etc/rancher/k3s/registries.yaml"
         mode: "0644"
 
+- name: Ensure u-boot nodes boot with the unified cgroup hierarchy
+  # `| bool`: `-e ensure_cgroup_v2=true` arrives as a string, which ansible-core 2.19+ rejects.
+  when: ensure_cgroup_v2 | bool
+  block:
+    - name: Check for a u-boot bootargs file
+      ansible.builtin.stat:
+        path: /boot/firmware/ubuntuEnv.txt
+      register: prereq_uboot_env
+
+    - name: Configure cgroup v2 in bootargs
+      when: prereq_uboot_env.stat.exists
+      block:
+        - name: Back up the original bootargs
+          ansible.builtin.copy:
+            src: /boot/firmware/ubuntuEnv.txt
+            dest: /boot/firmware/ubuntuEnv.txt.cgroupv1.bak
+            remote_src: true
+            force: false  # keep the pre-migration copy, never overwrite
+            mode: preserve
+
+        - name: Drop systemd.unified_cgroup_hierarchy=0 from bootargs
+          ansible.builtin.replace:
+            path: /boot/firmware/ubuntuEnv.txt
+            regexp: '\s+systemd\.unified_cgroup_hierarchy=0\b'
+            replace: ''
+          register: prereq_cgroup_v2_bootargs
+
+        # Deliberately no reboot here: prereq runs against live nodes, and this play
+        # has no drain. Reboot via reboot.yml or os-upgrade.yml, which cordon/drain first.
+        - name: Warn that a reboot is needed to switch to cgroup v2
+          when: prereq_cgroup_v2_bootargs.changed  # noqa no-handler
+          ansible.builtin.debug:
+            msg: >-
+              {{ inventory_hostname }}: bootargs now select cgroup v2, but the node is still
+              running cgroup v1. Reboot it (playbooks/reboot.yml or playbooks/os-upgrade.yml)
+              before upgrading k3s to v1.35 or newer, which will not start on cgroup v1.
+
 - name: Configure LAN DNS resolvers via systemd-resolved
   when: lan_dns_servers | length > 0
   block:
