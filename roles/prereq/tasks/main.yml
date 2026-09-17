@@ -12,9 +12,20 @@
     update_cache: "{{ airgap_dir is not defined }}"
 
 - name: Install Dependent RHEL 10 Package
-  when: ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] == "10"
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] == "10"
+    - ansible_facts['distribution'] != 'OracleLinux'
   ansible.builtin.dnf:
     name: kernel-modules-extra   # Load br_netfilter module
+    update_cache: "{{ airgap_dir is not defined }}"
+
+- name: Install Dependent Oracle Linux 10 Package
+  when:
+    - ansible_facts['distribution'] == 'OracleLinux'
+    - ansible_facts['distribution_major_version'] == "10"
+  ansible.builtin.dnf:
+    name: kernel-uek-modules-extra   # Load br_netfilter module (UEK kernel)
     update_cache: "{{ airgap_dir is not defined }}"
 
 - name: Enable IPv4 forwarding
@@ -34,6 +45,7 @@
 
 - name: Handle modern nftables/iptables-nft stack (Arch Linux 6.18+)
   when:
+    - manage_firewall
     - ansible_facts['distribution'] == 'Archlinux'
     - ansible_facts['kernel'] is version('6.18', '>=')
   block:
@@ -61,6 +73,7 @@
 
     - name: Configure nftables include and K3s rules fragment
       when:
+        - manage_firewall
         - ansible_facts.services['nftables.service'] is defined
         - ansible_facts.services['nftables.service'].status == 'enabled'
       block:
@@ -93,6 +106,7 @@
 
 - name: Allow UFW Exceptions
   when:
+    - manage_firewall
     - ansible_facts.services['ufw'] is defined
     - ansible_facts.services['ufw'].state == 'running'
   block:
@@ -143,6 +157,7 @@
 
 - name: Allow Firewalld Exceptions
   when:
+    - manage_firewall
     - ansible_facts.services['firewalld.service'] is defined
     - ansible_facts.services['firewalld.service'].state == 'running'
   block:
