@@ -46,6 +46,11 @@ k3s_cluster:
     lan_dns_routing_domains:
       - "~bartram.org"
 
+    # The RK1 Ubuntu image boots cgroup v1 (systemd.unified_cgroup_hierarchy=0);
+    # k3s v1.35+ won't start a kubelet there. Migrated 2026-09-17; this keeps a
+    # rebuilt node from silently reverting.
+    ensure_cgroup_v2: true
+
     # Manifests or Airgap should be either full paths or relative to the playbook directory.
     # List of locally available manifests to apply to the cluster, useful for PVCs or Traefik modifications.
     # extra_manifests: [ '/path/to/manifest1.yaml', '/path/to/manifest2.yaml' ]
