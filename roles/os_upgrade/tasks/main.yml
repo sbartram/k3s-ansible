@@ -23,7 +23,8 @@
 
 - name: Decide whether to reboot
   ansible.builtin.set_fact:
-    os_upgrade_should_reboot: "{{ os_upgrade_reboot_required.stat.exists or os_upgrade_force_reboot }}"
+    # `| bool`: `-e os_upgrade_force_reboot=true` arrives as a string, and ansible-core 2.19+ rejects non-bool conditionals.
+    os_upgrade_should_reboot: "{{ (os_upgrade_reboot_required.stat.exists or os_upgrade_force_reboot) | bool }}"
 
 - name: Report no reboot needed
   when: not os_upgrade_should_reboot
